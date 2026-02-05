@@ -37,12 +37,33 @@ public class DicomWriterService : IDicomWriter
                 if (item.Tag == DicomTag.PixelData) continue;
                 if (item.Tag.Group == 0x7FE0) continue;
 
+                // Skip tags that we'll be updating
+                if (item.Tag == DicomTag.Rows) continue;
+                if (item.Tag == DicomTag.Columns) continue;
+                if (item.Tag == DicomTag.BitsAllocated) continue;
+                if (item.Tag == DicomTag.BitsStored) continue;
+                if (item.Tag == DicomTag.HighBit) continue;
+                if (item.Tag == DicomTag.PixelRepresentation) continue;
+                if (item.Tag == DicomTag.SamplesPerPixel) continue;
+                if (item.Tag == DicomTag.PhotometricInterpretation) continue;
+                if (item.Tag == DicomTag.PlanarConfiguration) continue;
+
+                // Skip VOI LUT tags - they don't apply to RGB images
+                if (item.Tag == DicomTag.WindowCenter) continue;
+                if (item.Tag == DicomTag.WindowWidth) continue;
+                if (item.Tag == DicomTag.WindowCenterWidthExplanation) continue;
+                if (item.Tag == DicomTag.VOILUTFunction) continue;
+                if (item.Tag == DicomTag.RescaleIntercept) continue;
+                if (item.Tag == DicomTag.RescaleSlope) continue;
+                if (item.Tag == DicomTag.RescaleType) continue;
+
                 dataset.Add(item);
             }
 
-            // Update image parameters for the new RGB pixel data
+            // Set image parameters for RGB pixel data
             dataset.AddOrUpdate(DicomTag.Columns, (ushort)width);
             dataset.AddOrUpdate(DicomTag.Rows, (ushort)height);
+            dataset.AddOrUpdate(DicomTag.NumberOfFrames, 1);
             dataset.AddOrUpdate(DicomTag.SamplesPerPixel, (ushort)samplesPerPixel);
             dataset.AddOrUpdate(DicomTag.BitsAllocated, (ushort)8);
             dataset.AddOrUpdate(DicomTag.BitsStored, (ushort)8);
@@ -58,6 +79,9 @@ public class DicomWriterService : IDicomWriter
             {
                 dataset.AddOrUpdate(DicomTag.PhotometricInterpretation, "MONOCHROME2");
                 dataset.Remove(DicomTag.PlanarConfiguration);
+                // For grayscale, set default window/level
+                dataset.AddOrUpdate(DicomTag.WindowCenter, 127.5);
+                dataset.AddOrUpdate(DicomTag.WindowWidth, 255.0);
             }
 
             // Remove any compression-related tags
@@ -65,7 +89,7 @@ public class DicomWriterService : IDicomWriter
             dataset.Remove(DicomTag.LossyImageCompressionRatio);
             dataset.Remove(DicomTag.LossyImageCompressionMethod);
 
-            // Add the new pixel data as uncompressed OW (Other Word)
+            // Add the new pixel data
             var pixelData = DicomPixelData.Create(dataset, true);
             pixelData.AddFrame(new MemoryByteBuffer(newPixelData));
 
