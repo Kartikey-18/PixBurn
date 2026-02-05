@@ -198,16 +198,13 @@ public partial class AnnotationEditorViewModel : ObservableObject
 
     public void FinishEditingText()
     {
-        if (_editingTextAnnotation is not null && !string.IsNullOrWhiteSpace(EditingTextContent))
+        if (_editingTextAnnotation is not null)
         {
-            _editingTextAnnotation.Text = EditingTextContent.Trim();
+            // Save the text content (keep at least placeholder if empty)
+            var newText = string.IsNullOrWhiteSpace(EditingTextContent) ? "Text" : EditingTextContent.Trim();
+            _editingTextAnnotation.Text = newText;
             if (CurrentFile is not null)
                 CurrentFile.HasUnsavedChanges = true;
-        }
-        else if (_editingTextAnnotation is not null && string.IsNullOrWhiteSpace(EditingTextContent))
-        {
-            // Remove empty text annotations
-            Annotations.Remove(_editingTextAnnotation);
         }
 
         _editingTextAnnotation = null;
@@ -243,11 +240,11 @@ public partial class AnnotationEditorViewModel : ObservableObject
 
         if (SelectedTool == AnnotationToolType.Text)
         {
-            // Text is placed immediately with editing
+            // Place text with default content, user can double-click to edit
             var textAnnotation = new TextAnnotation
             {
                 Position = normalizedPoint,
-                Text = "",
+                Text = "Text",
                 FontSize = CurrentFontSize,
                 StrokeColor = CurrentStrokeColor
             };
@@ -255,8 +252,8 @@ public partial class AnnotationEditorViewModel : ObservableObject
             SelectedAnnotation = textAnnotation;
             IsDrawing = false;
 
-            // Start editing immediately
-            StartEditingText(textAnnotation);
+            // Switch to Select tool so user can move/edit the text
+            SelectedTool = AnnotationToolType.Select;
         }
     }
 
