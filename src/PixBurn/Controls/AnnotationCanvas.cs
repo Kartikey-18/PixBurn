@@ -256,6 +256,12 @@ public class AnnotationCanvas : Canvas
                 var newY = Math.Clamp(rect.Bounds.Y + deltaY, 0, 1 - rect.Bounds.Height);
                 rect.Bounds = new Rect(newX, newY, rect.Bounds.Width, rect.Bounds.Height);
                 break;
+
+            case EllipseAnnotation ellipse:
+                var newEllipseX = Math.Clamp(ellipse.Bounds.X + deltaX, 0, 1 - ellipse.Bounds.Width);
+                var newEllipseY = Math.Clamp(ellipse.Bounds.Y + deltaY, 0, 1 - ellipse.Bounds.Height);
+                ellipse.Bounds = new Rect(newEllipseX, newEllipseY, ellipse.Bounds.Width, ellipse.Bounds.Height);
+                break;
         }
     }
 
@@ -317,6 +323,9 @@ public class AnnotationCanvas : Canvas
                 break;
             case RectangleAnnotation rect:
                 RenderRectangle(dc, rect, pen);
+                break;
+            case EllipseAnnotation ellipse:
+                RenderEllipse(dc, ellipse, pen);
                 break;
             case TextAnnotation text:
                 RenderText(dc, text, isSelected);
@@ -388,16 +397,41 @@ public class AnnotationCanvas : Canvas
         dc.DrawRectangle(fill, pen, bounds);
     }
 
+    private void RenderEllipse(DrawingContext dc, EllipseAnnotation ellipse, Pen pen)
+    {
+        var topLeft = DenormalizePoint(new Point(ellipse.Bounds.X, ellipse.Bounds.Y));
+        var bottomRight = DenormalizePoint(new Point(
+            ellipse.Bounds.X + ellipse.Bounds.Width,
+            ellipse.Bounds.Y + ellipse.Bounds.Height));
+
+        var center = new Point(
+            (topLeft.X + bottomRight.X) / 2,
+            (topLeft.Y + bottomRight.Y) / 2);
+        var radiusX = (bottomRight.X - topLeft.X) / 2;
+        var radiusY = (bottomRight.Y - topLeft.Y) / 2;
+
+        Brush? fill = ellipse.FillColor.HasValue
+            ? new SolidColorBrush(ellipse.FillColor.Value)
+            : null;
+
+        dc.DrawEllipse(fill, pen, center, radiusX, radiusY);
+    }
+
     private void RenderText(DrawingContext dc, TextAnnotation text, bool isSelected)
     {
         var position = DenormalizePoint(text.Position);
+
+        // Scale font size relative to canvas height to match burned output
+        // FontSize is stored as percentage of image height (e.g., 5 = 5% of height)
+        double scaledFontSize = text.FontSize * ActualHeight / 100.0;
+        scaledFontSize = Math.Max(scaledFontSize, 8); // Minimum readable size
 
         var formattedText = new FormattedText(
             text.Text,
             System.Globalization.CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight,
             new Typeface(text.FontFamily),
-            text.FontSize,
+            scaledFontSize,
             new SolidColorBrush(text.StrokeColor),
             VisualTreeHelper.GetDpi(this).PixelsPerDip);
 
@@ -437,6 +471,18 @@ public class AnnotationCanvas : Canvas
                     Math.Abs(current.X - start.X),
                     Math.Abs(current.Y - start.Y));
                 dc.DrawRectangle(null, pen, rect);
+                break;
+
+            case AnnotationToolType.Ellipse:
+                var ellipseRect = new Rect(
+                    Math.Min(start.X, current.X),
+                    Math.Min(start.Y, current.Y),
+                    Math.Abs(current.X - start.X),
+                    Math.Abs(current.Y - start.Y));
+                var center = new Point(
+                    ellipseRect.X + ellipseRect.Width / 2,
+                    ellipseRect.Y + ellipseRect.Height / 2);
+                dc.DrawEllipse(null, pen, center, ellipseRect.Width / 2, ellipseRect.Height / 2);
                 break;
         }
     }

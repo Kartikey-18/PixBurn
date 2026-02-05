@@ -47,15 +47,13 @@ public class DicomReaderService : IDicomReader
         var file = DicomFile.Open(filePath);
         var dataset = file.Dataset;
 
-        int width = dataset.GetSingleValueOrDefault(DicomTag.Columns, 0);
-        int height = dataset.GetSingleValueOrDefault(DicomTag.Rows, 0);
-        int bitsAllocated = dataset.GetSingleValueOrDefault(DicomTag.BitsAllocated, 8);
-        int samplesPerPixel = dataset.GetSingleValueOrDefault(DicomTag.SamplesPerPixel, 1);
-        string photometric = dataset.GetSingleValueOrDefault(DicomTag.PhotometricInterpretation, "MONOCHROME2");
-
         // Use fo-dicom's rendering to get normalized pixel data
         var dicomImage = new DicomImage(dataset);
         var renderedImage = dicomImage.RenderImage();
+
+        // Use actual rendered dimensions (may differ from DICOM tags for some files)
+        int width = renderedImage.Width;
+        int height = renderedImage.Height;
 
         // Convert rendered image to byte array
         // fo-dicom renders to BGRA format, we need to convert appropriately

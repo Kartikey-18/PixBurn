@@ -5,5 +5,6 @@ public enum AnnotationToolType
     Select,
     Arrow,
     Rectangle,
+    Ellipse,
     Text
 }

@@ -27,7 +27,8 @@ public partial class AnnotationEditorViewModel : ObservableObject
     // Tool settings
     [ObservableProperty] private Color currentStrokeColor = Colors.Red;
     [ObservableProperty] private double currentStrokeWidth = 2.0;
-    [ObservableProperty] private double currentFontSize = 52.0;
+    // FontSize is percentage of image height (e.g., 5 = 5% of height)
+    [ObservableProperty] private double currentFontSize = 5.0;
 
     // Zoom and pan
     [ObservableProperty] private double zoomLevel = 1.0;
@@ -278,6 +279,12 @@ public partial class AnnotationEditorViewModel : ObservableObject
                 StrokeWidth = CurrentStrokeWidth
             },
             AnnotationToolType.Rectangle => new RectangleAnnotation
+            {
+                Bounds = CreateRect(DrawStartPoint, normalizedEndPoint),
+                StrokeColor = CurrentStrokeColor,
+                StrokeWidth = CurrentStrokeWidth
+            },
+            AnnotationToolType.Ellipse => new EllipseAnnotation
             {
                 Bounds = CreateRect(DrawStartPoint, normalizedEndPoint),
                 StrokeColor = CurrentStrokeColor,

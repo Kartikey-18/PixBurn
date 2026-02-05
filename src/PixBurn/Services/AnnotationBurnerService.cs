@@ -83,6 +83,9 @@ public class AnnotationBurnerService : IAnnotationBurner
             case RectangleAnnotation rect:
                 DrawRectangle(image, rect, color, width, height);
                 break;
+            case EllipseAnnotation ellipse:
+                DrawEllipse(image, ellipse, color, width, height);
+                break;
             case TextAnnotation text:
                 DrawText(image, text, color, width, height);
                 break;
@@ -167,6 +170,34 @@ public class AnnotationBurnerService : IAnnotationBurner
         image.Mutate(ctx => ctx.Draw(color, (float)rect.StrokeWidth, bounds));
     }
 
+    private void DrawEllipse(Image<Rgba32> image, EllipseAnnotation ellipse,
+        Color color, int width, int height)
+    {
+        var bounds = new RectangleF(
+            (float)(ellipse.Bounds.X * width),
+            (float)(ellipse.Bounds.Y * height),
+            (float)(ellipse.Bounds.Width * width),
+            (float)(ellipse.Bounds.Height * height));
+
+        var ellipsePolygon = new EllipsePolygon(
+            bounds.X + bounds.Width / 2,
+            bounds.Y + bounds.Height / 2,
+            bounds.Width / 2,
+            bounds.Height / 2);
+
+        if (ellipse.FillColor.HasValue)
+        {
+            var fillColor = Color.FromRgba(
+                ellipse.FillColor.Value.R,
+                ellipse.FillColor.Value.G,
+                ellipse.FillColor.Value.B,
+                ellipse.FillColor.Value.A);
+            image.Mutate(ctx => ctx.Fill(fillColor, ellipsePolygon));
+        }
+
+        image.Mutate(ctx => ctx.Draw(color, (float)ellipse.StrokeWidth, ellipsePolygon));
+    }
+
     private void DrawText(Image<Rgba32> image, TextAnnotation textAnnotation,
         Color color, int width, int height)
     {
@@ -174,9 +205,12 @@ public class AnnotationBurnerService : IAnnotationBurner
             (float)(textAnnotation.Position.X * width),
             (float)(textAnnotation.Position.Y * height));
 
-        // Scale font size based on image resolution
-        float scaledFontSize = (float)textAnnotation.FontSize * (height / 500f);
-        scaledFontSize = Math.Max(scaledFontSize, 12f);  // Minimum readable size
+        // FontSize is stored as percentage of image height (e.g., 5 = 5% of height)
+        // WPF FormattedText and ImageSharp DrawText have different font metrics.
+        // WPF measures font size as the em-height, ImageSharp uses similar but may render slightly larger.
+        // Apply a correction factor to match WPF rendering (empirically determined ~0.75)
+        float scaledFontSize = (float)(textAnnotation.FontSize * height / 100.0 * 0.75);
+        scaledFontSize = Math.Max(scaledFontSize, 8f);  // Match canvas minimum
 
         var font = _defaultFont.CreateFont(scaledFontSize, FontStyle.Regular);
 

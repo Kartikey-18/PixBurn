@@ -8,7 +8,7 @@ public partial class TextAnnotation : AnnotationBase
 {
     [ObservableProperty] private Point position;     // Top-left, normalized 0-1
     [ObservableProperty] private string text = "Text";
-    [ObservableProperty] private double fontSize = 14.0;
+    [ObservableProperty] private double fontSize = 5.0;  // Percentage of image height
     [ObservableProperty] private string fontFamily = "Arial";
     [ObservableProperty] private Color backgroundColor = Colors.Transparent;
     [ObservableProperty] private bool hasBackground = false;

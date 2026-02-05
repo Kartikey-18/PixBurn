@@ -32,6 +32,10 @@
                              IsChecked="{Binding SelectedTool, Converter={StaticResource EnumToBool},
                                          ConverterParameter={x:Static models:AnnotationToolType.Rectangle}}"
                              Style="{StaticResource ToolButton}" />
+                <RadioButton Content="Ellipse" GroupName="Tools"
+                             IsChecked="{Binding SelectedTool, Converter={StaticResource EnumToBool},
+                                         ConverterParameter={x:Static models:AnnotationToolType.Ellipse}}"
+                             Style="{StaticResource ToolButton}" />
                 <RadioButton Content="Text" GroupName="Tools"
                              IsChecked="{Binding SelectedTool, Converter={StaticResource EnumToBool},
                                          ConverterParameter={x:Static models:AnnotationToolType.Text}}"
@@ -61,21 +65,19 @@
 
                 <Separator Margin="12,0" />
 
-                <!-- Font Size -->
+                <!-- Font Size (percentage of image height) -->
                 <TextBlock Text="Text Size:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox Width="60" SelectedItem="{Binding CurrentFontSize}" VerticalAlignment="Center">
                     <ComboBox.Items>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">2</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">3</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">4</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">5</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">6</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">8</sys:Double>
                         <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">10</sys:Double>
                         <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">12</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">14</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">16</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">18</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">20</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">24</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">28</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">32</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">36</sys:Double>
-                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">48</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">15</sys:Double>
                     </ComboBox.Items>
                 </ComboBox>
 
