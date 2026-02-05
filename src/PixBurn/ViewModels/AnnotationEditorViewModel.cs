@@ -27,7 +27,7 @@ public partial class AnnotationEditorViewModel : ObservableObject
     // Tool settings
     [ObservableProperty] private Color currentStrokeColor = Colors.Red;
     [ObservableProperty] private double currentStrokeWidth = 2.0;
-    [ObservableProperty] private double currentFontSize = 14.0;
+    [ObservableProperty] private double currentFontSize = 52.0;
 
     // Zoom and pan
     [ObservableProperty] private double zoomLevel = 1.0;
@@ -341,6 +341,15 @@ public partial class AnnotationEditorViewModel : ObservableObject
                 CurrentFontSize = textAnnotation.FontSize;
                 CurrentStrokeColor = textAnnotation.StrokeColor;
             }
+        }
+    }
+
+    public void MarkAnnotationsMoved()
+    {
+        if (CurrentFile is not null)
+        {
+            CurrentFile.HasUnsavedChanges = true;
+            OnPropertyChanged(nameof(Annotations));
         }
     }
 

@@ -20,6 +20,8 @@ public partial class AnnotationEditorView : UserControl
         AnnotationCanvas.DrawingStarted += OnDrawingStarted;
         AnnotationCanvas.DrawingFinished += OnDrawingFinished;
         AnnotationCanvas.AnnotationSelected += OnAnnotationSelected;
+        AnnotationCanvas.AnnotationMoved += OnAnnotationMoved;
+        AnnotationCanvas.TextAnnotationDoubleClicked += OnTextAnnotationDoubleClicked;
     }
 
     private void OnDrawingStarted(Point normalizedPoint)
@@ -44,16 +46,29 @@ public partial class AnnotationEditorView : UserControl
         {
             vm.SelectAnnotation(annotation);
 
-            // If a text annotation is selected, start editing
-            if (annotation is Models.Annotations.TextAnnotation textAnnotation)
+            // If a text annotation is double-clicked, start editing
+            // Single click just selects for dragging
+        }
+    }
+
+    private void OnAnnotationMoved()
+    {
+        if (DataContext is AnnotationEditorViewModel vm)
+        {
+            vm.MarkAnnotationsMoved();
+        }
+    }
+
+    private void OnTextAnnotationDoubleClicked(Models.Annotations.TextAnnotation textAnnotation)
+    {
+        if (DataContext is AnnotationEditorViewModel vm)
+        {
+            vm.StartEditingText(textAnnotation);
+            Dispatcher.BeginInvoke(() =>
             {
-                vm.StartEditingText(textAnnotation);
-                Dispatcher.BeginInvoke(() =>
-                {
-                    TextEditBox.Focus();
-                    TextEditBox.SelectAll();
-                });
-            }
+                TextEditBox.Focus();
+                TextEditBox.SelectAll();
+            });
         }
     }
 

@@ -87,6 +87,8 @@ public class AnnotationCanvas : Canvas
     public event Action<Point>? DrawingStarted;
     public event Action<Point>? DrawingFinished;
     public event Action<AnnotationBase?>? AnnotationSelected;
+    public event Action? AnnotationMoved;
+    public event Action<TextAnnotation>? TextAnnotationDoubleClicked;
 
     #endregion
 
@@ -94,6 +96,11 @@ public class AnnotationCanvas : Canvas
     private bool _isDrawing;
     private Point _drawStart;
     private Point _drawCurrent;
+
+    // Dragging state
+    private bool _isDragging;
+    private Point _dragStart;
+    private AnnotationBase? _draggingAnnotation;
 
     public AnnotationCanvas()
     {
@@ -138,11 +145,32 @@ public class AnnotationCanvas : Canvas
         var pos = e.GetPosition(this);
         var normalized = NormalizePoint(pos);
 
+        // Handle double-click for text editing
+        if (e.ClickCount == 2 && SelectedTool == AnnotationToolType.Select)
+        {
+            var hit = HitTestAnnotation(normalized);
+            if (hit is TextAnnotation textAnnotation)
+            {
+                TextAnnotationDoubleClicked?.Invoke(textAnnotation);
+                e.Handled = true;
+                return;
+            }
+        }
+
         if (SelectedTool == AnnotationToolType.Select)
         {
             var hit = HitTestAnnotation(normalized);
             SelectedAnnotation = hit;
             AnnotationSelected?.Invoke(hit);
+
+            // Start dragging if we hit an annotation
+            if (hit is not null)
+            {
+                _isDragging = true;
+                _dragStart = normalized;
+                _draggingAnnotation = hit;
+                CaptureMouse();
+            }
             return;
         }
 
@@ -158,9 +186,24 @@ public class AnnotationCanvas : Canvas
     {
         base.OnMouseMove(e);
 
-        if (_isDrawing)
+        var pos = e.GetPosition(this);
+        var normalized = NormalizePoint(pos);
+
+        if (_isDragging && _draggingAnnotation is not null)
         {
-            _drawCurrent = NormalizePoint(e.GetPosition(this));
+            // Calculate delta
+            var deltaX = normalized.X - _dragStart.X;
+            var deltaY = normalized.Y - _dragStart.Y;
+
+            // Move the annotation
+            MoveAnnotation(_draggingAnnotation, deltaX, deltaY);
+            _dragStart = normalized;
+
+            InvalidateVisual();
+        }
+        else if (_isDrawing)
+        {
+            _drawCurrent = normalized;
             InvalidateVisual();
         }
     }
@@ -168,6 +211,15 @@ public class AnnotationCanvas : Canvas
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e);
+
+        if (_isDragging)
+        {
+            _isDragging = false;
+            _draggingAnnotation = null;
+            ReleaseMouseCapture();
+            AnnotationMoved?.Invoke();
+            return;
+        }
 
         if (_isDrawing)
         {
@@ -177,6 +229,33 @@ public class AnnotationCanvas : Canvas
             var endPoint = NormalizePoint(e.GetPosition(this));
             DrawingFinished?.Invoke(endPoint);
             InvalidateVisual();
+        }
+    }
+
+    private void MoveAnnotation(AnnotationBase annotation, double deltaX, double deltaY)
+    {
+        switch (annotation)
+        {
+            case TextAnnotation text:
+                text.Position = new Point(
+                    Math.Clamp(text.Position.X + deltaX, 0, 1),
+                    Math.Clamp(text.Position.Y + deltaY, 0, 1));
+                break;
+
+            case ArrowAnnotation arrow:
+                arrow.StartPoint = new Point(
+                    Math.Clamp(arrow.StartPoint.X + deltaX, 0, 1),
+                    Math.Clamp(arrow.StartPoint.Y + deltaY, 0, 1));
+                arrow.EndPoint = new Point(
+                    Math.Clamp(arrow.EndPoint.X + deltaX, 0, 1),
+                    Math.Clamp(arrow.EndPoint.Y + deltaY, 0, 1));
+                break;
+
+            case RectangleAnnotation rect:
+                var newX = Math.Clamp(rect.Bounds.X + deltaX, 0, 1 - rect.Bounds.Width);
+                var newY = Math.Clamp(rect.Bounds.Y + deltaY, 0, 1 - rect.Bounds.Height);
+                rect.Bounds = new Rect(newX, newY, rect.Bounds.Width, rect.Bounds.Height);
+                break;
         }
     }
 

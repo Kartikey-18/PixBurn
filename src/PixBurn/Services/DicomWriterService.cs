@@ -24,32 +24,35 @@ public class DicomWriterService : IDicomWriter
             var file = await DicomFile.OpenAsync(sourcePath);
             var originalDataset = file.Dataset;
 
-            // Create new dataset with uncompressed transfer syntax
+            // Use explicit VR little endian for uncompressed output
             var targetSyntax = DicomTransferSyntax.ExplicitVRLittleEndian;
+
+            // Create new dataset with target transfer syntax
             var dataset = new DicomDataset(targetSyntax);
 
             // Copy all non-pixel-related tags from original
             foreach (var item in originalDataset)
             {
+                // Skip pixel data and related tags
                 if (item.Tag == DicomTag.PixelData) continue;
-                if (item.Tag.Group == 0x7FE0) continue; // Skip all pixel data related tags
+                if (item.Tag.Group == 0x7FE0) continue;
 
                 dataset.Add(item);
             }
 
-            // Update image dimensions (in case they changed)
+            // Update image parameters for the new RGB pixel data
             dataset.AddOrUpdate(DicomTag.Columns, (ushort)width);
             dataset.AddOrUpdate(DicomTag.Rows, (ushort)height);
             dataset.AddOrUpdate(DicomTag.SamplesPerPixel, (ushort)samplesPerPixel);
             dataset.AddOrUpdate(DicomTag.BitsAllocated, (ushort)8);
             dataset.AddOrUpdate(DicomTag.BitsStored, (ushort)8);
             dataset.AddOrUpdate(DicomTag.HighBit, (ushort)7);
-            dataset.AddOrUpdate(DicomTag.PixelRepresentation, (ushort)0);
+            dataset.AddOrUpdate(DicomTag.PixelRepresentation, (ushort)0); // unsigned
 
             if (samplesPerPixel == 3)
             {
                 dataset.AddOrUpdate(DicomTag.PhotometricInterpretation, "RGB");
-                dataset.AddOrUpdate(DicomTag.PlanarConfiguration, (ushort)0);
+                dataset.AddOrUpdate(DicomTag.PlanarConfiguration, (ushort)0); // interleaved RGB
             }
             else
             {
@@ -57,7 +60,12 @@ public class DicomWriterService : IDicomWriter
                 dataset.Remove(DicomTag.PlanarConfiguration);
             }
 
-            // Add pixel data
+            // Remove any compression-related tags
+            dataset.Remove(DicomTag.LossyImageCompression);
+            dataset.Remove(DicomTag.LossyImageCompressionRatio);
+            dataset.Remove(DicomTag.LossyImageCompressionMethod);
+
+            // Add the new pixel data as uncompressed OW (Other Word)
             var pixelData = DicomPixelData.Create(dataset, true);
             pixelData.AddFrame(new MemoryByteBuffer(newPixelData));
 
@@ -66,18 +74,27 @@ public class DicomWriterService : IDicomWriter
             dataset.AddOrUpdate(DicomTag.ContentTime, DateTime.Now.ToString("HHmmss"));
 
             // Mark as derived (annotated)
-            var imageType = originalDataset.GetValues<string>(DicomTag.ImageType);
-            if (imageType.Length > 0)
+            try
             {
-                var newImageType = new List<string>();
-                if (imageType[0] != "DERIVED")
-                    newImageType.Add("DERIVED");
-                newImageType.AddRange(imageType.Where(t => t != "ORIGINAL" && t != "DERIVED"));
-                if (newImageType.Count == 1)
-                    newImageType.Add("SECONDARY");
-                dataset.AddOrUpdate(DicomTag.ImageType, newImageType.ToArray());
+                var imageType = originalDataset.GetValues<string>(DicomTag.ImageType);
+                if (imageType != null && imageType.Length > 0)
+                {
+                    var newImageType = new List<string> { "DERIVED" };
+                    foreach (var t in imageType)
+                    {
+                        if (t != "ORIGINAL" && t != "DERIVED")
+                            newImageType.Add(t);
+                    }
+                    if (newImageType.Count == 1)
+                        newImageType.Add("SECONDARY");
+                    dataset.AddOrUpdate(DicomTag.ImageType, newImageType.ToArray());
+                }
+                else
+                {
+                    dataset.AddOrUpdate(DicomTag.ImageType, "DERIVED", "SECONDARY");
+                }
             }
-            else
+            catch
             {
                 dataset.AddOrUpdate(DicomTag.ImageType, "DERIVED", "SECONDARY");
             }
@@ -90,8 +107,16 @@ public class DicomWriterService : IDicomWriter
             if (!string.IsNullOrEmpty(outputDir))
                 Directory.CreateDirectory(outputDir);
 
-            // Save with new pixel data
+            // Create new file with proper file meta info
             var newFile = new DicomFile(dataset);
+
+            // Ensure file meta info has correct transfer syntax
+            newFile.FileMetaInfo.TransferSyntax = targetSyntax;
+            newFile.FileMetaInfo.MediaStorageSOPClassUID = dataset.GetSingleValueOrDefault(
+                DicomTag.SOPClassUID, DicomUID.SecondaryCaptureImageStorage);
+            newFile.FileMetaInfo.MediaStorageSOPInstanceUID = dataset.GetSingleValueOrDefault(
+                DicomTag.SOPInstanceUID, DicomUID.Generate());
+
             await Task.Run(() => newFile.Save(outputPath), ct);
 
             return new SaveResult
