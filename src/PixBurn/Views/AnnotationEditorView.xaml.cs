@@ -7,6 +7,11 @@ namespace PixBurn.Views;
 
 public partial class AnnotationEditorView : UserControl
 {
+    private bool _isPanning;
+    private Point _panStart;
+    private double _scrollStartH;
+    private double _scrollStartV;
+
     public AnnotationEditorView()
     {
         InitializeComponent();
@@ -79,4 +84,61 @@ public partial class AnnotationEditorView : UserControl
             vm.FinishEditingText();
         }
     }
+
+    #region Zoom and Pan
+
+    private void ImageScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            if (DataContext is AnnotationEditorViewModel vm)
+            {
+                vm.HandleMouseWheel(e.Delta, true);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void ImageScrollViewer_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        // Middle mouse button or Space+Left click for panning
+        if (e.MiddleButton == MouseButtonState.Pressed ||
+            (e.LeftButton == MouseButtonState.Pressed && Keyboard.IsKeyDown(Key.Space)))
+        {
+            _isPanning = true;
+            _panStart = e.GetPosition(ImageScrollViewer);
+            _scrollStartH = ImageScrollViewer.HorizontalOffset;
+            _scrollStartV = ImageScrollViewer.VerticalOffset;
+            ImageScrollViewer.Cursor = Cursors.Hand;
+            ImageScrollViewer.CaptureMouse();
+            e.Handled = true;
+        }
+    }
+
+    private void ImageScrollViewer_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isPanning)
+        {
+            _isPanning = false;
+            ImageScrollViewer.Cursor = Cursors.Arrow;
+            ImageScrollViewer.ReleaseMouseCapture();
+            e.Handled = true;
+        }
+    }
+
+    private void ImageScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_isPanning)
+        {
+            var pos = e.GetPosition(ImageScrollViewer);
+            var deltaX = pos.X - _panStart.X;
+            var deltaY = pos.Y - _panStart.Y;
+
+            ImageScrollViewer.ScrollToHorizontalOffset(_scrollStartH - deltaX);
+            ImageScrollViewer.ScrollToVerticalOffset(_scrollStartV - deltaY);
+            e.Handled = true;
+        }
+    }
+
+    #endregion
 }

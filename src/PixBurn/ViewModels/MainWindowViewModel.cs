@@ -47,6 +47,16 @@ public partial class MainWindowViewModel : ObservableObject
                 SaveAsNewCommand.NotifyCanExecuteChanged();
             }
         };
+
+        // Wire up annotation changes to update save button state
+        Editor.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(Editor.Annotations))
+            {
+                SaveCommand.NotifyCanExecuteChanged();
+                SaveAsNewCommand.NotifyCanExecuteChanged();
+            }
+        };
     }
 
     private bool CanSave() =>

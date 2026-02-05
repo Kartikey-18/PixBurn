@@ -129,7 +129,11 @@
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding CurrentFile, Converter={StaticResource BoolToVis}}"
-                              Background="Transparent">
+                              Background="Transparent"
+                              PreviewMouseWheel="ImageScrollViewer_PreviewMouseWheel"
+                              PreviewMouseDown="ImageScrollViewer_PreviewMouseDown"
+                              PreviewMouseUp="ImageScrollViewer_PreviewMouseUp"
+                              PreviewMouseMove="ImageScrollViewer_PreviewMouseMove">
                     <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
                         <Grid.LayoutTransform>
                             <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
