@@ -108,14 +108,14 @@ public class DicomReaderService : IDicomReader
         int width = renderedImage.Width;
         int height = renderedImage.Height;
 
-        // Get pixels as BGRA - Color32 returns ARGB packed value
+        // Get pixels as BGRA - Bgra32 format expects B, G, R, A byte order
         var pixels = new int[width * height];
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
                 var color = renderedImage.GetPixel(x, y);
-                // Color32 has R, G, B, A properties
+                // Pack as BGRA (little-endian: B is lowest byte)
                 pixels[y * width + x] = (color.A << 24) | (color.R << 16) | (color.G << 8) | color.B;
             }
         }
