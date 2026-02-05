@@ -18,7 +18,7 @@
         <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
                 Padding="8">
-            <StackPanel Orientation="Horizontal">
+            <WrapPanel Orientation="Horizontal">
                 <!-- Tool Selection -->
                 <RadioButton Content="Select" GroupName="Tools"
                              IsChecked="{Binding SelectedTool, Converter={StaticResource EnumToBool},
@@ -61,6 +61,39 @@
 
                 <Separator Margin="12,0" />
 
+                <!-- Font Size -->
+                <TextBlock Text="Text Size:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox Width="60" SelectedItem="{Binding CurrentFontSize}" VerticalAlignment="Center">
+                    <ComboBox.Items>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">10</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">12</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">14</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">16</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">18</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">20</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">24</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">28</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">32</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">36</sys:Double>
+                        <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">48</sys:Double>
+                    </ComboBox.Items>
+                </ComboBox>
+
+                <Separator Margin="12,0" />
+
+                <!-- Zoom Controls -->
+                <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <Button Content="-" Width="28" Command="{Binding ZoomOutCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding ZoomPercentText}" VerticalAlignment="Center"
+                           Width="45" TextAlignment="Center" />
+                <Button Content="+" Width="28" Command="{Binding ZoomInCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="4,0,0,0" />
+                <Button Content="Fit" Width="35" Command="{Binding ZoomFitCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" />
+
+                <Separator Margin="12,0" />
+
                 <!-- Delete / Clear -->
                 <Button Content="Delete"
                         Command="{Binding DeleteAnnotationCommand}"
@@ -69,7 +102,7 @@
                 <Button Content="Clear All"
                         Command="{Binding ClearAnnotationsCommand}"
                         Style="{StaticResource DangerButton}" />
-            </StackPanel>
+            </WrapPanel>
         </Border>
 
         <!-- Canvas Area -->
@@ -91,10 +124,17 @@
                     </TextBlock.Style>
                 </TextBlock>
 
-                <!-- Image + Annotation Canvas -->
-                <Viewbox Stretch="Uniform" Margin="20"
-                         Visibility="{Binding CurrentFile, Converter={StaticResource BoolToVis}}">
-                    <Grid>
+                <!-- Scrollable Image Container -->
+                <ScrollViewer x:Name="ImageScrollViewer"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding CurrentFile, Converter={StaticResource BoolToVis}}"
+                              Background="Transparent">
+                    <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                        <Grid.LayoutTransform>
+                            <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
+                        </Grid.LayoutTransform>
+
                         <Image x:Name="DicomImage"
                                Source="{Binding DisplayImage}"
                                RenderOptions.BitmapScalingMode="HighQuality"
@@ -109,8 +149,29 @@
                             CurrentStrokeColor="{Binding CurrentStrokeColor}"
                             CurrentStrokeWidth="{Binding CurrentStrokeWidth}"
                             Background="Transparent" />
+
+                        <!-- Text Editing Overlay -->
+                        <Canvas x:Name="TextEditCanvas"
+                                Width="{Binding DisplayImage.PixelWidth}"
+                                Height="{Binding DisplayImage.PixelHeight}"
+                                Visibility="{Binding IsEditingText, Converter={StaticResource BoolToVis}}">
+                            <TextBox x:Name="TextEditBox"
+                                     Text="{Binding EditingTextContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="{Binding EditingTextFontSize}"
+                                     Foreground="{Binding EditingTextBrush}"
+                                     Background="#CC000000"
+                                     BorderThickness="1"
+                                     BorderBrush="{StaticResource PrimaryBrush}"
+                                     Padding="4,2"
+                                     MinWidth="50"
+                                     AcceptsReturn="True"
+                                     Canvas.Left="{Binding EditingTextLeft}"
+                                     Canvas.Top="{Binding EditingTextTop}"
+                                     KeyDown="TextEditBox_KeyDown"
+                                     LostFocus="TextEditBox_LostFocus" />
+                        </Canvas>
                     </Grid>
-                </Viewbox>
+                </ScrollViewer>
             </Grid>
         </Border>
     </Grid>

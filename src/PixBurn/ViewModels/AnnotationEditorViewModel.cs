@@ -28,6 +28,20 @@ public partial class AnnotationEditorViewModel : ObservableObject
     [ObservableProperty] private double currentStrokeWidth = 2.0;
     [ObservableProperty] private double currentFontSize = 14.0;
 
+    // Zoom
+    [ObservableProperty] private double zoomLevel = 1.0;
+    public string ZoomPercentText => $"{ZoomLevel * 100:0}%";
+
+    // Text editing state
+    [ObservableProperty] private bool isEditingText;
+    [ObservableProperty] private string editingTextContent = "";
+    [ObservableProperty] private double editingTextFontSize = 14.0;
+    [ObservableProperty] private double editingTextLeft;
+    [ObservableProperty] private double editingTextTop;
+    [ObservableProperty] private Brush editingTextBrush = Brushes.Red;
+
+    private TextAnnotation? _editingTextAnnotation;
+
     // Color options for UI
     public static Color[] ColorOptions => new[]
     {
@@ -49,6 +63,11 @@ public partial class AnnotationEditorViewModel : ObservableObject
         _reader = reader;
     }
 
+    partial void OnZoomLevelChanged(double value)
+    {
+        OnPropertyChanged(nameof(ZoomPercentText));
+    }
+
     public void LoadFile(DicomFileItem? file)
     {
         CurrentFile = file;
@@ -63,6 +82,8 @@ public partial class AnnotationEditorViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(Annotations));
         SelectedAnnotation = null;
+        ZoomLevel = 1.0;
+        CancelEditingText();
     }
 
     public void RefreshImage()
@@ -73,6 +94,74 @@ public partial class AnnotationEditorViewModel : ObservableObject
             DisplayImage = CurrentFile.FullImage;
         }
     }
+
+    #region Zoom Commands
+
+    [RelayCommand]
+    private void ZoomIn()
+    {
+        ZoomLevel = Math.Min(ZoomLevel * 1.25, 5.0);
+    }
+
+    [RelayCommand]
+    private void ZoomOut()
+    {
+        ZoomLevel = Math.Max(ZoomLevel / 1.25, 0.1);
+    }
+
+    [RelayCommand]
+    private void ZoomFit()
+    {
+        ZoomLevel = 1.0;
+    }
+
+    #endregion
+
+    #region Text Editing
+
+    public void StartEditingText(TextAnnotation textAnnotation)
+    {
+        if (DisplayImage == null) return;
+
+        _editingTextAnnotation = textAnnotation;
+        EditingTextContent = textAnnotation.Text;
+        EditingTextFontSize = textAnnotation.FontSize;
+        EditingTextLeft = textAnnotation.Position.X * DisplayImage.PixelWidth;
+        EditingTextTop = textAnnotation.Position.Y * DisplayImage.PixelHeight;
+        EditingTextBrush = new SolidColorBrush(textAnnotation.StrokeColor);
+        IsEditingText = true;
+    }
+
+    public void FinishEditingText()
+    {
+        if (_editingTextAnnotation is not null && !string.IsNullOrWhiteSpace(EditingTextContent))
+        {
+            _editingTextAnnotation.Text = EditingTextContent.Trim();
+            if (CurrentFile is not null)
+                CurrentFile.HasUnsavedChanges = true;
+        }
+        else if (_editingTextAnnotation is not null && string.IsNullOrWhiteSpace(EditingTextContent))
+        {
+            // Remove empty text annotations
+            Annotations.Remove(_editingTextAnnotation);
+        }
+
+        _editingTextAnnotation = null;
+        IsEditingText = false;
+        EditingTextContent = "";
+
+        // Force canvas redraw
+        OnPropertyChanged(nameof(Annotations));
+    }
+
+    public void CancelEditingText()
+    {
+        _editingTextAnnotation = null;
+        IsEditingText = false;
+        EditingTextContent = "";
+    }
+
+    #endregion
 
     // Called from canvas on mouse down
     public void StartDrawing(Point normalizedPoint)
@@ -90,7 +179,7 @@ public partial class AnnotationEditorViewModel : ObservableObject
 
         if (SelectedTool == AnnotationToolType.Text)
         {
-            // Text is placed immediately
+            // Text is placed immediately with editing
             var textAnnotation = new TextAnnotation
             {
                 Position = normalizedPoint,
@@ -101,6 +190,9 @@ public partial class AnnotationEditorViewModel : ObservableObject
             AddAnnotation(textAnnotation);
             SelectedAnnotation = textAnnotation;
             IsDrawing = false;
+
+            // Start editing immediately
+            StartEditingText(textAnnotation);
         }
     }
 
